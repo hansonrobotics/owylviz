@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body>
+<script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket = io.connect('http://' + location.host + '/display');
+  socket.on('connect', function() {
+    socket.emit('join room', location.pathname);
+    socket.on('tree', function(structure) {
+      console.log('tree: ' + JSON.stringify(structure));
+    });
+    socket.on('step', function(id) {
+      console.log('step: ' + id);
+    });
+  });
+</script>
+</body>
+</html>
