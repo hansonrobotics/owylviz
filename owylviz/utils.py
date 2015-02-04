@@ -1,4 +1,5 @@
 from functools import update_wrapper
+import base64, struct
 
 def get_enclosed(func, typ):
     """Return values in func's closure of type typ as a dictionary, which maps
@@ -47,3 +48,6 @@ def inject_closure(f, dct):
     update_wrapper(func, f)
 
     return func
+
+def b64id(obj):
+    return base64.b64encode(struct.pack('>q', id(obj)))

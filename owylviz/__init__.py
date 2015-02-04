@@ -1,6 +1,7 @@
+import platform, sys, re
 from functools import wraps
-import websocket
-import struct
+from socketIO_client import SocketIO, BaseNamespace
+import time
 
 from . import utils
 
@@ -10,24 +11,40 @@ class OwylTree:
 
     def __init__(self, tree):
         self.tree = tree
-        self.parsed = self._parse(tree)
         self.on_step = Event()
+        self._new_tree = None
+        self._parsed = self._parse(tree)
         self._connection = None
 
-    def get_structure(self):
-        return self._get_structure(self.parsed)
+    @property
+    def tree_with_hooks(self):
+        """ A copy of the tree that will trigger on_step events """
+        if not self._new_tree:
+            self._new_tree = self._deepwrap(self.tree, self._wrapnode)
+        return self._new_tree
 
-    def attach(self, url='ws://owylviz.heroku.com'):
-        # if self.connection != None:
-        #     raise Exception('This method can only be called once.')
-        # self._connection = Connection(url)
-        # self.on_step += [self._connection.step]
-        return self._deepwrap(self.tree, self._wrapnode)
+    def get_structure(self):
+        """ Returns tree structure in json-encodable format """
+        return self._get_structure(self._parsed)
+
+    def connect(self, connection=None):
+        """ Connects to a webserver.
+        To specify host, port or room name, pass an owylviz.Connection instance.
+        """
+        if self._connection != None:
+            raise Exception('This method can only be called once.')
+
+        if connection == None:
+            connection = Connection()
+        connection.set_introduction(self.get_structure())
+        self.on_step += [connection.step]
+        self._connection = connection
 
     @classmethod
     def _get_structure(cls, parsed):
         node, children = list(parsed.items())[0]
         return {'name': node.__name__,
+                'id': utils.b64id(node),
                 'children': [cls._get_structure(child) for child in children]}
 
     @classmethod
@@ -56,7 +73,7 @@ class OwylTree:
 
     def _wrapnode(self, makeIterator):
         def _new_iterator(iterator):
-            self.on_step(new_makeIterator)
+            self.on_step(makeIterator)
             result = None
             while True:
                 result = yield iterator.send(result)
@@ -74,15 +91,36 @@ class Event(list):
 
 class Connection:
 
-    def __init__(self, url):
-        self.ws = websocket.create_connection(url)
+    ASSUMED_TIMEOUT = 30 # inactivity seconds to reconnect after
+
+    def __init__(self, host='owylviz.herokuapp.com', port=80, room=None):
+        self.host = host
+        self.port = port
+        self.room = room if room else self.generate_name()
+
+    def set_introduction(self, data):
+        self.intro_data = data
+        self._reconnect()
 
     def step(self, makeIterator):
-        self.ws.send(self.strhash(makeIterator))
+        self._check_reconnect()
+        self._emit('step', utils.b64id(makeIterator))
 
-    def close(self):
-        self.ws.close()
+    def _emit(self, *args):
+        self.ns.emit(*args)
+        self.last_emit = time.time()
+
+    def _check_reconnect(self):
+        if time.time() - self.last_emit > self.ASSUMED_TIMEOUT:
+            self._reconnect()
+
+    def _reconnect(self):
+        self.io = SocketIO(self.host, self.port, wait_for_connection=False)
+        self.ns = self.io.define(BaseNamespace, '/accept')
+        self._emit('introduce', self.room, self.intro_data)
 
     @staticmethod
-    def strhash(obj):
-        return struct.pack('>q', hash(obj))
+    def generate_name():
+        name = '/{}-{}'.format(platform.node(), sys.argv[0])
+        name = re.sub('[^0-9a-zA-Z/]+', '-', name)
+        return name
