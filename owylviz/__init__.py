@@ -5,8 +5,6 @@ import time
 
 from . import utils
 
-__all__ = ['OwylTree']
-
 class OwylTree:
 
     def __init__(self, tree):
@@ -44,7 +42,7 @@ class OwylTree:
     def _get_structure(cls, parsed):
         node, children = list(parsed.items())[0]
         return {'name': node.__name__,
-                'id': utils.b64id(node),
+                'id': utils.b64int(id(node)),
                 'children': [cls._get_structure(child) for child in children]}
 
     @classmethod
@@ -67,13 +65,16 @@ class OwylTree:
             index, children = list(cell.items())[0]
             new_children = [cls._deepwrap(child, wrapper) for child in children]
             new_tree = utils.inject_closure(tree, {index: tuple(new_children)})
+            new_tree.original_id = id(tree)
             return wrapper(new_tree)
         else:
             return wrapper(tree)
 
     def _wrapnode(self, makeIterator):
         def _new_iterator(iterator):
-            self.on_step(makeIterator)
+            taskid = utils.b64int(
+                getattr(makeIterator, 'original_id', id(makeIterator)))
+            self.on_step(taskid)
             result = None
             while True:
                 result = yield iterator.send(result)
@@ -102,9 +103,9 @@ class Connection:
         self.intro_data = data
         self._reconnect()
 
-    def step(self, makeIterator):
+    def step(self, taskid):
         self._check_reconnect()
-        self._emit('step', utils.b64id(makeIterator))
+        self._emit('step', taskid)
 
     def _emit(self, *args):
         self.ns.emit(*args)

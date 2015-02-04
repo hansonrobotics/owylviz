@@ -49,5 +49,5 @@ def inject_closure(f, dct):
 
     return func
 
-def b64id(obj):
-    return base64.b64encode(struct.pack('>q', id(obj)))
+def b64int(int):
+    return base64.b64encode(struct.pack('>q', int))
