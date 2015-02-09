@@ -94,7 +94,7 @@ class Connection:
 
     ASSUMED_TIMEOUT = 30 # inactivity seconds to reconnect after
 
-    def __init__(self, host='owylviz.herokuapp.com', port=80, room=None):
+    def __init__(self, room=None, host='owylviz.herokuapp.com', port=80):
         self.host = host
         self.port = port
         self.room = room if room else self.generate_name()
