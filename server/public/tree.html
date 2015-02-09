@@ -2,19 +2,196 @@
 <html lang="en">
 
 <body>
+<div id="container"></div>
+
 <script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<style>
+body {
+  background-color: #EEE;
+}
+#container {
+  border: solid 1px;
+  background-color: #FFF;
+}
+line {
+  stroke: #999;
+  stroke-width: 4;
+}
+circle {
+  stroke-width: 4;
+}
+.text {
+  font-family: Verdana,Geneva,sans-serif;
+  font-size: small;
+}
+</style>
 <script>
+
   var socket = io.connect('http://' + location.host + '/display');
   socket.on('connect', function() {
-    socket.emit('join room', location.pathname);
+    socket.emit('join room', location.pathname.slice(1));
     socket.on('tree', function(structure) {
       console.log('tree: ' + JSON.stringify(structure));
+      update_tree(structure);
     });
     socket.on('step', function(id) {
       console.log('step: ' + id);
     });
   });
+
+  var w = 960,
+      h = 600,
+      r = 10,
+      fill = d3.scale.category10(),
+      force = d3.layout.force()
+        .size([w, h])
+        .charge(-40)
+        .linkDistance(50)
+        .gravity(0.01)
+        .on("tick", tick),
+      zoom = d3.behavior.zoom()
+        .scaleExtent([0.1, 10])
+        .on("zoom", zoomed),
+      svg = d3.select("#container").append("svg")
+        .attr("width", w)
+        .attr("height", h)
+        .call(zoom)
+        .append("g"),
+      node = svg.selectAll("g"),
+      link = svg.selectAll("line"),
+      nodes,
+      links
+
+  function update_tree(structure) {
+    nodes = d3.layout.tree().nodes(structure),
+    links = d3.layout.tree().links(nodes);
+    force.nodes(nodes).links(links).start();
+
+    link = link.data(links)
+    link.enter().append("svg:line")
+      .style("stroke-width", 4);
+
+    node = node.data(nodes)
+    var g = node.enter().append("svg:g");
+    g.append("svg:circle")
+      .attr("r", r)
+      .style("fill", function(d) { return fill(d.name); })
+      .style("stroke", function(d) { return d3.rgb(fill(d.name)).darker(); })
+    g.append("svg:text")
+      .attr("class", "text")
+      .text(function(d) { return d.name} )
+      .attr("x", -(r+2))
+      .attr("text-anchor", "end");
+    g.call(force.drag);
+  }
+
+  function tick(e) {
+    var kdown = 20, // down force coefficient
+        ksort = 40, // sort force coefficient
+        kdist = 2; // decrease kdist - increase "easing out" of sort force
+
+    var arr = downForce();
+    nodes.forEach(function(d, i) {
+      d.x += arr[i][0] * kdown * e.alpha;
+      d.y += arr[i][1] * kdown * e.alpha;
+    });
+
+    arr = sortForce(kdist);
+    nodes.forEach(function(d, i) {
+      d.x += arr[i][0] * ksort * e.alpha;
+      d.y += arr[i][1] * ksort * e.alpha;
+    });
+
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+  }
+
+  function downForce() {
+    var rootNum = nodes.filter(function(d, i) {return d.parent == undefined}).length,
+        leafNum = nodes.filter(function(d, i) {return d.children == undefined}).length,
+        kroot = 1/rootNum, //distribute force equally over all roots/leafs
+        kleaf = 1/leafNum;
+    //corrections to keep the tree centered
+    //i.e. scale the vertical axis down around line kroot(rootNum) = 1
+    //kroot = (kroot-1)/100 + 1;
+    //kleaf = (kleaf-1)/100 + 1;
+    kroot = 1;
+    kleaf = 1
+    return nodes.map(function(d, i) {
+      if (d.children == undefined) {return [0, kleaf]}
+      else if (d.parent == undefined) {return [0, -kroot]}
+      else {return [0, 0]}
+    });
+  }
+
+  function sortForce(kdist) {
+    return nodes.map(function(d, i) {
+      if (d.parent == undefined) {
+        return [0, 0]
+      }
+
+      var childI = d.parent.children.indexOf(d),
+          parentPos = [d.parent.x, d.parent.y],
+          mydir = direction([d.x, d.y], parentPos);
+
+      function siblingForce(sibling, fromLeft) {
+        var dir = direction([sibling.x, sibling.y], parentPos),
+            dist = Math.atan2(mydir[0], mydir[1]) - Math.atan2(dir[0], dir[1]),
+            normMag = fromLeft ? Math.sigmoid(-dist * kdist) : Math.sigmoid(dist * kdist),
+            forceDir = fromLeft ? rightAngleCCW(mydir) : rightAngleCW(mydir);
+        return [normMag * forceDir[0], normMag * forceDir[1]]
+      }
+
+      forces = d.parent.children.map(function(d, i) {
+        if (i == childI) {return [0, 0];}
+        else {return siblingForce(d, i < childI);}
+      });
+
+      return forces.reduce(function(f, g) {return pointAdd(f, g);});
+    });
+  }
+
+  function zoomed() {
+    console.log(d3.event.ctrlKey);
+    svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+  }
+
+  var mag2Of = function(arr) {
+    return arr.map(function(x) {return x*x})
+      .reduce(function(x, y) {return x+y});
+  };
+  var norm = function(arr) {
+    var mag = Math.sqrt(mag2Of(arr));
+    return arr.map(function(x) {return x/mag});
+  }
+  var pointAdd = function(arr1, arr2) {
+    return arr1.map(function(x, i) {return x + arr2[i]});
+  }
+  var pointDiff = function(arr1, arr2) {
+    return arr1.map(function(x, i) {return x - arr2[i]});
+  }
+  var rightAngleCCW = function(arr) {
+    return [arr[1], -arr[0]];
+  }
+  var rightAngleCW = function(arr) {
+    return [-arr[1], arr[0]];
+  }
+  var direction = function(arr1, arr2) {
+    return norm(pointDiff(arr1, arr2));
+  }
+  Math.TAU = Math.PI*2;
+  var angleDiff = function(x, y) {
+    return ((x+Math.TAU) - (y+Math.TAU)) % Math.TAU;
+  }
+  Math.sigmoid = function(x) {
+    return 1 / (1 + Math.exp(-x));
+  }
 </script>
 </body>
 </html>

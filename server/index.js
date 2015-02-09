@@ -34,8 +34,8 @@ io.of('/accept').on('connection', function(socket) {
   });
 
   socket.on('disconnect', function() {
-    delete trees[room];
-    statusio.emit('rooms', Object.keys(trees));
+    //delete trees[room];
+    //statusio.emit('rooms', Object.keys(trees));
   });
 
 });
@@ -45,6 +45,10 @@ __dirname += '/public';
 
 app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html')
+});
+
+app.get('/*.json', function(req, res){
+  res.sendFile(__dirname + '/' + req.params[0] + '.json')
 });
 
 app.get('/*', function(req, res){

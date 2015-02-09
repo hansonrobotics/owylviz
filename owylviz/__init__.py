@@ -122,6 +122,6 @@ class Connection:
 
     @staticmethod
     def generate_name():
-        name = '/{}-{}'.format(platform.node(), sys.argv[0])
+        name = '{}-{}'.format(platform.node(), sys.argv[0])
         name = re.sub('[^0-9a-zA-Z/]+', '-', name)
         return name
