@@ -42,7 +42,7 @@ class OwylTree:
     def _get_structure(cls, parsed):
         node, children = list(parsed.items())[0]
         return {'name': node.__name__,
-                'id': utils.b64int(id(node)),
+                'id': utils.b49int(id(node)),
                 'children': [cls._get_structure(child) for child in children]}
 
     @classmethod
@@ -72,7 +72,7 @@ class OwylTree:
 
     def _wrapnode(self, makeIterator):
         def _new_iterator(iterator):
-            taskid = utils.b64int(
+            taskid = utils.b49int(
                 getattr(makeIterator, 'original_id', id(makeIterator)))
             self.on_step(taskid)
             result = None

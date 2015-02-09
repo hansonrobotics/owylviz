@@ -1,5 +1,4 @@
 from functools import update_wrapper
-import base64, struct
 
 def get_enclosed(func, typ):
     """Return values in func's closure of type typ as a dictionary, which maps
@@ -49,5 +48,10 @@ def inject_closure(f, dct):
 
     return func
 
-def b64int(int):
-    return base64.b64encode(struct.pack('>q', int))
+BASE49 = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
+def b49int(i):
+    result = ''
+    while i > 0:
+        i, mod = divmod(i, 49)
+        result = BASE49[mod] + result
+    return result
