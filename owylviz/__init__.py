@@ -1,5 +1,6 @@
 import platform, sys, re
 from functools import wraps
+import socketIO_client
 from socketIO_client import SocketIO, BaseNamespace
 import time
 
@@ -110,14 +111,21 @@ class Connection:
     def _emit(self, *args):
         self.ns.emit(*args)
         self.last_emit = time.time()
+        self.io.heartbeat_pacemaker.send(next(self.io.gen_elapsed_time))
 
     def _check_reconnect(self):
         if time.time() - self.last_emit > self.ASSUMED_TIMEOUT:
             self._reconnect()
 
     def _reconnect(self):
+        # Initialize connection
         self.io = SocketIO(self.host, self.port, wait_for_connection=False)
         self.ns = self.io.define(BaseNamespace, '/accept')
+
+        # Prepare to send manual heartbeat
+        self.io.gen_elapsed_time = socketIO_client._yield_elapsed_time()
+        next(self.io.gen_elapsed_time)
+
         self._emit('introduce', self.room, self.intro_data)
 
     @staticmethod
