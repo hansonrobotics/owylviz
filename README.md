@@ -71,3 +71,9 @@ while True:
 ```
 
 ![Example](docs/example.gif)
+
+## Testing
+
+```
+python setup.py test
+```
