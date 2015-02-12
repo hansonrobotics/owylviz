@@ -85,7 +85,7 @@ class Tests(unittest.TestCase):
                                                    {'name': 'log', 'desc': 'How did you execute me?',
                                                     'children': []}]})
 
-    def testHook(self):
+    def testHookSmallTree(self):
         tree = owyl.sequence(owyl.succeed(),
                              owyl.succeed())
         viztree = OwylTree(tree)
@@ -99,6 +99,19 @@ class Tests(unittest.TestCase):
 
         for taskid in ids:
             mock.assert_any_call(taskid)
+
+    def testHookLog(self):
+        tree = owyl.log('some message')
+        viztree = OwylTree(tree)
+        structure = viztree.get_structure()
+        taskid = structure['id']
+
+        mock = Mock()
+        viztree.on_step += [mock]
+        tree = viztree.tree_with_hooks
+        [x for x in owyl.visit(tree)]
+
+        mock.assert_called_with(taskid)
 
 if __name__ == "__main__":
     unittest.main()

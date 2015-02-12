@@ -85,9 +85,10 @@ class OwylTree:
         cell = utils.get_enclosed(tree, tuple)
         if len(cell) == 1:
             index, args = list(cell.items())[0]
-            children = [arg for arg in args if isinstance(arg, FunctionType)]
-            new_children = [cls._deepwrap(child, wrapper) for child in children]
-            new_tree = utils.inject_closure(tree, {index: tuple(new_children)})
+            new_args = [cls._deepwrap(arg, wrapper)
+                        if isinstance(arg, FunctionType) else arg
+                        for arg in args]
+            new_tree = utils.inject_closure(tree, {index: tuple(new_args)})
             new_tree.original_id = id(tree)
             return wrapper(new_tree)
         else:
