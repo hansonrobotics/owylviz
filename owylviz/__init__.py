@@ -3,6 +3,7 @@ from functools import wraps
 import socketIO_client
 from socketIO_client import SocketIO, BaseNamespace
 import time
+from types import FunctionType
 
 from . import utils
 
@@ -49,11 +50,12 @@ class OwylTree:
     @classmethod
     def _parse(cls, tree):
         """Converts an owyl tree to a dictionary tree."""
-        # If there's only one tuple in the closure, we assume it's the *args.
-        # I.e. children. Specifically, owyl makeIterator functions.
+        # If there's only one tuple in the closure, we assume it's the *args and
+        # all functions in *args - children. Specifically, owyl makeIterator functions.
         cell = utils.get_enclosed(tree, tuple)
         if len(cell) == 1:
-            index, children = list(cell.items())[0]
+            index, args = list(cell.items())[0]
+            children = [arg for arg in args if isinstance(arg, FunctionType)]
             parsed = [cls._parse(child) for child in children]
             return {tree: parsed}
         else:
@@ -63,7 +65,8 @@ class OwylTree:
     def _deepwrap(cls, tree, wrapper):
         cell = utils.get_enclosed(tree, tuple)
         if len(cell) == 1:
-            index, children = list(cell.items())[0]
+            index, args = list(cell.items())[0]
+            children = [arg for arg in args if isinstance(arg, FunctionType)]
             new_children = [cls._deepwrap(child, wrapper) for child in children]
             new_tree = utils.inject_closure(tree, {index: tuple(new_children)})
             new_tree.original_id = id(tree)
