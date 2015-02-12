@@ -48,10 +48,10 @@ def inject_closure(f, dct):
 
     return func
 
-BASE49 = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
-def b49int(i):
+BASE52 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+def b52int(i):
     result = ''
     while i > 0:
-        i, mod = divmod(i, 49)
-        result = BASE49[mod] + result
+        i, mod = divmod(i, 52)
+        result = BASE52[mod] + result
     return result
