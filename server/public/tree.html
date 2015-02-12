@@ -116,17 +116,24 @@
   }
 
   function highlight(id) {
+    /* Using a custom tween to define the start values instead of style().transition().style(),
+     * because when highlight() is called very frequently, the pre-transition
+     * style() call is ignored for whatever reason. */
+    function tween(start, end) {
+      return function(d, i, a) {
+        if (typeof end == "function") {end = end.call(this, d, i);}
+        return d3.interpolate(String(start), String(end));
+      }
+    }
+
     svg.selectAll("g.node#" + id + " circle")
-      .style("fill", "#FFF")
-      .style("stroke", "#000")
-    .transition().duration(1000)
-      .style("fill", function(d) { return fill(d.name); })
-      .style("stroke", function(d) { return d3.rgb(fill(d.name)).darker(); });
+      .transition().duration(1000)
+      .styleTween("fill", tween("#FFF", function(d) { console.log(d.name); return fill(d.name); }))
+      .styleTween("stroke", tween("#000", function(d) { return d3.rgb(fill(d.name)).darker(); }));
 
     svg.selectAll("path.link#" + id)
-      .style("stroke-width", "4px")
-    .transition().duration(1000)
-      .style("stroke-width", "2px");
+      .transition().duration(1000)
+      .styleTween("stroke-width", tween("4px", "2px"))
   }
 
 </script>
