@@ -6,16 +6,17 @@ import owyl
 from owyl import blackboard
 from owylviz import OwylTree
 
-def deepdel(obj, badkey):
+def truncate(obj, allowedkeys):
+    """ Removes all keys not in the allowed list in the tree. """
     if isinstance(obj, list):
-        return [deepdel(val, badkey) for val in obj]
+        return [truncate(val, allowedkeys) for val in obj]
     elif isinstance(obj, dict):
         new_obj = copy.copy(obj)
         for key in obj:
-            if key == badkey:
+            if not (key in allowedkeys):
                 del new_obj[key]
             elif type(obj[key]) in [dict, list]:
-                new_obj[key] = deepdel(obj[key], badkey)
+                new_obj[key] = truncate(obj[key], allowedkeys)
         return new_obj
     else:
         return obj
@@ -26,24 +27,26 @@ class Tests(unittest.TestCase):
         tree = owyl.sequence(owyl.succeed(),
                              owyl.fail())
         viztree = OwylTree(tree)
-        structure = deepdel(viztree.get_structure(), 'id')
+        structure = truncate(viztree.get_structure(), ['name', 'children'])
         self.assertEquals(structure,
                           {'name': 'sequence',
                            'children': [{'name': 'succeed', 'children': []},
                                         {'name': 'fail', 'children': []}]})
 
     def testStructureBig(self):
-        tree = owyl.parallel(owyl.sequence(owyl.repeatAlways(blackboard.setBB())),
+        tree = owyl.parallel(owyl.sequence(owyl.repeatAlways(blackboard.setBB()), owyl.log()),
                              owyl.selector(owyl.repeatUntilSucceed(blackboard.checkBB())),
-                             owyl.repeatUntilFail(owyl.fail))
+                             owyl.repeatUntilFail(owyl.fail()))
         viztree = OwylTree(tree)
-        structure = deepdel(viztree.get_structure(), 'id')
+        structure = truncate(viztree.get_structure(), ['name', 'children'])
         self.assertEquals(structure,
                           {'name': 'parallel',
                            'children': [{'name': 'sequence',
                                          'children': [{'name': 'repeatAlways',
                                                        'children': [{'name': 'setBB',
-                                                                     'children': []}]}]},
+                                                                     'children': []}]},
+                                                      {'name': 'log',
+                                                       'children': []}]},
                                         {'name': 'selector',
                                          'children': [{'name': 'repeatUntilSucceed',
                                                        'children': [{'name': 'checkBB',
@@ -51,6 +54,36 @@ class Tests(unittest.TestCase):
                                         {'name': 'repeatUntilFail',
                                          'children': [{'name': 'fail',
                                                        'children': []}]}]})
+
+    def testDescriptionSetBB(self):
+        tree = blackboard.setBB(key='somekey', val=3)
+        viztree = OwylTree(tree)
+        structure = truncate(viztree.get_structure(), ['desc'])
+        self.assertEquals(structure, {'desc': 'somekey 3'})
+
+    def testDescriptionCheckBB(self):
+        tree = blackboard.checkBB(key='somekey', check=lambda x: x == 3)
+        viztree = OwylTree(tree)
+        structure = truncate(viztree.get_structure(), ['desc'])
+        self.assertEquals(structure, {'desc': 'somekey'})
+
+    def testDescriptionLog(self):
+        tree = owyl.log('some message')
+        viztree = OwylTree(tree)
+        structure = truncate(viztree.get_structure(), ['desc'])
+        self.assertEquals(structure, {'desc': 'some message'})
+
+    def testDescriptionSmallTree(self):
+        tree = owyl.sequence(owyl.failAfter(after=10),
+                             owyl.log('How did you execute me?'))
+
+        viztree = OwylTree(tree)
+        structure = truncate(viztree.get_structure(), ['name', 'desc', 'children'])
+        self.assertEquals(structure, {'name': 'sequence', 'desc': '',
+                                      'children': [{'name': 'failAfter', 'desc': '10',
+                                                    'children': []},
+                                                   {'name': 'log', 'desc': 'How did you execute me?',
+                                                    'children': []}]})
 
     def testHook(self):
         tree = owyl.sequence(owyl.succeed(),

@@ -44,12 +44,31 @@ class OwylTree:
     def _get_structure(cls, parsed):
         node, children = list(parsed.items())[0]
         return {'name': node.__name__,
+                'desc': cls._get_desc(node),
                 'id': utils.b49int(id(node)),
                 'children': [cls._get_structure(child) for child in children]}
 
+    DESC_TYPES = [str, int, float, bool]
+    @classmethod
+    def _get_desc(cls, node):
+        """ Concatenates all primitives in args and kwargs enclosed in node. """
+
+        strs = []
+        cell = utils.get_enclosed(node, tuple)
+        for index, args in cell.items():
+            strs += [str(arg) for arg in args if type(arg) in cls.DESC_TYPES]
+
+        cell = utils.get_enclosed(node, dict)
+        for index, kwargs in cell.items():
+            strs += [str(val) for key, val in
+                     sorted(kwargs.items(), key=lambda x: x[0])
+                     if type(val) in cls.DESC_TYPES]
+
+        return ' '.join(strs)
+
     @classmethod
     def _parse(cls, tree):
-        """Converts an owyl tree to a dictionary tree."""
+        """ Converts an owyl tree to a dictionary tree. """
         # If there's only one tuple in the closure, we assume it's the *args and
         # all functions in *args - children. Specifically, owyl makeIterator functions.
         cell = utils.get_enclosed(tree, tuple)

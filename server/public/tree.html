@@ -21,6 +21,11 @@
   font: 12px sans-serif;
 }
 
+.description {
+  fill: #888;
+  font-size: smaller;
+}
+
 .link {
   fill: none;
   stroke: #ccc;
@@ -92,11 +97,20 @@
         .style("fill", function(d) { return fill(d.name); })
         .style("stroke", function(d) { return d3.rgb(fill(d.name)).darker(); });
 
-    newNode.append("text")
-        .attr("dx", function(d) {return d.children ? -r*1.4 : r*1.4;})
-        .attr("dy", function(d) {return 3;})
+    var textGroup = newNode.append("g")
+        .attr("transform", function(d) {
+            return "translate(" + (d.children ? -r*1.4 : r*1.4) + ",3)"
+        });
+
+    textGroup.append("text")
         .attr("text-anchor", function(d) {return d.children ? "end" : "start";})
-        .text(function(d) { return d.name; });
+        .text(function(d) { return d.name; })
+
+    textGroup.append("text")
+        .attr("dy", 10)
+        .attr("text-anchor", function(d) {return d.children ? "end" : "start";})
+        .attr("class", "description")
+        .text(function(d) { return d.desc; })
 
     node.exit().remove();
   }
