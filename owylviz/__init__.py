@@ -4,6 +4,7 @@ import socketIO_client
 from socketIO_client import SocketIO, BaseNamespace
 import time
 from types import FunctionType
+import logging
 
 from . import utils
 
@@ -153,6 +154,7 @@ class Connection:
         next(self.io.gen_elapsed_time)
 
         self._emit('introduce', self.room, self.intro_data)
+        logging.info("Publishing your Owyl tree: http://{}:{}/{}".format(self.host, self.port, self.room))
 
     @staticmethod
     def generate_name():
