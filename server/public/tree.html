@@ -41,13 +41,13 @@
     socket.on('tree', function(structure) {
       update_tree(structure);
     });
-    socket.on('step', function(id) {
-      highlight(id);
+    socket.on('step', function(id, yieldval) {
+      highlight(id, yieldval);
     });
   });
 
   var r = 10,
-      padding = [140, r*1.4],
+      padding = [160, r*1.4],
       fill = d3.scale.category20();
 
   var svg = d3.select("#container").append("svg")
@@ -115,7 +115,7 @@
     node.exit().remove();
   }
 
-  function highlight(id) {
+  function highlight(id, yieldval) {
     /* Using a custom tween to define the start values instead of style().transition().style(),
      * because when highlight() is called very frequently, the pre-transition
      * style() call is ignored for whatever reason. */
@@ -128,12 +128,13 @@
 
     svg.selectAll("g.node#" + id + " circle")
       .transition().duration(1000)
-      .styleTween("fill", tween("#FFF", function(d) { console.log(d.name); return fill(d.name); }))
+      .styleTween("fill", tween("#FFF", function(d) { return fill(d.name); }))
       .styleTween("stroke", tween("#000", function(d) { return d3.rgb(fill(d.name)).darker(); }));
 
     svg.selectAll("path.link#" + id)
-      .transition().duration(1000)
+      .transition().duration(2000)
       .styleTween("stroke-width", tween("4px", "2px"))
+      .styleTween("stroke", tween({true:"#5f5",false:"#f55",null:"#ccc"}[yieldval], "#ccc"));
   }
 
 </script>

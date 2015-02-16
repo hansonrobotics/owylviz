@@ -29,8 +29,8 @@ io.of('/accept').on('connection', function(socket) {
     statusio.emit('rooms', Object.keys(trees));
   });
 
-  socket.on('step', function(id) {
-    displayio.in(room).emit('step', id);
+  socket.on('step', function(id, yieldval) {
+    displayio.in(room).emit('step', id, yieldval);
   });
 
   socket.on('disconnect', function() {

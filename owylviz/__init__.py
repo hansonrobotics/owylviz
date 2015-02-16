@@ -98,10 +98,13 @@ class OwylTree:
         def _new_iterator(iterator):
             taskid = utils.b52int(
                 getattr(makeIterator, 'original_id', id(makeIterator)))
-            self.on_step(taskid)
-            result = None
+            self.on_step(taskid, None) # on create
+            sendval = None
             while True:
-                result = yield iterator.send(result)
+                result = iterator.send(sendval)
+                if result in [True, False, None]:
+                    self.on_step(taskid, result) # on yield
+                sendval = yield result
 
         @wraps(makeIterator)
         def new_makeIterator(*args, **kwargs):
@@ -127,9 +130,9 @@ class Connection:
         self.intro_data = data
         self._reconnect()
 
-    def step(self, taskid):
+    def step(self, taskid, yieldval):
         self._check_reconnect()
-        self._emit('step', taskid)
+        self._emit('step', taskid, yieldval)
 
     def _emit(self, *args):
         self.ns.emit(*args)
