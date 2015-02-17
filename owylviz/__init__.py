@@ -12,14 +12,15 @@ class OwylTree:
 
     def __init__(self, tree):
         self.tree = tree
-        self.on_step = Event()
+        self.on_enter = Event()
+        self.on_yield = Event()
         self._new_tree = None
         self._parsed = self._parse(tree)
         self._connection = None
 
     @property
     def tree_with_hooks(self):
-        """ A copy of the tree that will trigger on_step events """
+        """ A copy of the tree that will trigger on_enter and on_yield events """
         if not self._new_tree:
             self._new_tree = self._deepwrap(self.tree, self._wrapnode)
         return self._new_tree
@@ -38,7 +39,8 @@ class OwylTree:
         if connection == None:
             connection = Connection()
         connection.set_introduction(self.get_structure())
-        self.on_step += [connection.step]
+        self.on_enter += [connection.step]
+        self.on_yield += [connection.step]
         self._connection = connection
 
     @classmethod
@@ -99,12 +101,12 @@ class OwylTree:
         def _new_iterator(iterator):
             taskid = utils.b52int(
                 getattr(makeIterator, 'original_id', id(makeIterator)))
-            self.on_step(taskid, None) # on create
+            self.on_enter(taskid)
             sendval = None
             while True:
                 result = iterator.send(sendval)
                 if result in [True, False, None]:
-                    self.on_step(taskid, result) # on yield
+                    self.on_yield(taskid, result)
                 sendval = yield result
 
         @wraps(makeIterator)
@@ -131,7 +133,7 @@ class Connection:
         self.intro_data = data
         self._reconnect()
 
-    def step(self, taskid, yieldval):
+    def step(self, taskid, yieldval=None):
         self._check_reconnect()
         self._emit('step', taskid, yieldval)
 
