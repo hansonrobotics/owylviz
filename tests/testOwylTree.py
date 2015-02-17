@@ -1,5 +1,5 @@
 import unittest
-from mock import Mock
+from mock import Mock, call
 import copy
 
 import owyl
@@ -85,33 +85,50 @@ class Tests(unittest.TestCase):
                                                    {'name': 'log', 'desc': 'How did you execute me?',
                                                     'children': []}]})
 
-    def testHookSmallTree(self):
+    def testYieldHookSmallTree(self):
         tree = owyl.sequence(owyl.succeed(),
-                             owyl.succeed())
+                             owyl.fail())
         viztree = OwylTree(tree)
         structure = viztree.get_structure()
-        ids = [structure['id']] + [child['id'] for child in structure['children']]
 
         mock = Mock()
-        viztree.on_step += [mock]
+        viztree.on_yield += [mock]
         tree = viztree.tree_with_hooks
         [x for x in owyl.visit(tree)]
 
-        for taskid in ids:
-            mock.assert_any_call(taskid)
+        mock.assert_has_calls([call(structure['children'][0]['id'], True),
+                               call(structure['children'][1]['id'], False),
+                               call(structure['id'], False)])
 
-    def testHookLog(self):
+    def testEnterHookSmallTree(self):
+        tree = owyl.sequence(owyl.succeed(),
+                             owyl.fail())
+        viztree = OwylTree(tree)
+        structure = viztree.get_structure()
+
+        mock = Mock()
+        viztree.on_enter += [mock]
+        tree = viztree.tree_with_hooks
+        [x for x in owyl.visit(tree)]
+
+        mock.assert_has_calls([call(structure['id']),
+                               call(structure['children'][0]['id']),
+                               call(structure['children'][1]['id'])])
+
+    def testHooksLog(self):
         tree = owyl.log('some message')
         viztree = OwylTree(tree)
         structure = viztree.get_structure()
         taskid = structure['id']
 
         mock = Mock()
-        viztree.on_step += [mock]
+        viztree.on_enter += [mock]
+        viztree.on_yield += [mock]
         tree = viztree.tree_with_hooks
         [x for x in owyl.visit(tree)]
 
-        mock.assert_called_with(taskid)
+        mock.assert_has_calls([call(taskid),
+                               call(taskid, True)])
 
 if __name__ == "__main__":
     unittest.main()
