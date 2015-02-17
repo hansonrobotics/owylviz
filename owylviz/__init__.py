@@ -51,7 +51,7 @@ class OwylTree:
                 'id': utils.b52int(id(node)),
                 'children': [cls._get_structure(child) for child in children]}
 
-    DESC_TYPES = [str, int, float, bool]
+    DESC_TYPES = [str, int, float, bool, type(None)]
     @classmethod
     def _get_desc(cls, node):
         """ Concatenates all primitives in args and kwargs enclosed in node. """
