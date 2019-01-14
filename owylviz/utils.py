@@ -1,3 +1,4 @@
+#Copyright (c) 2013-2018 Hanson Robotics, Ltd.
 from functools import update_wrapper
 
 def get_enclosed(func, typ):
