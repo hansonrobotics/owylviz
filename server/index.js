@@ -1,3 +1,4 @@
+//Copyright (c) 2013-2018 Hanson Robotics, Ltd.
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io');
