@@ -102,4 +102,4 @@ $ cd owylviz
 $ heroku create
 $ git subtree push --prefix server heroku master
 ```
-#####Copyright (c) 2013-2018 Hanson Robotics, Ltd.
+##### Copyright (c) 2013-2018 Hanson Robotics, Ltd.
